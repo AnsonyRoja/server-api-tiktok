@@ -1,6 +1,5 @@
 // server.js
 const express = require('express');
-require('dotenv').config();
 const axios = require('axios');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -8,9 +7,9 @@ const qs = require('qs');
 
 const app = express();
 
-const CLIENT_KEY = process.env.CLIENT_KEY;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
+const CLIENT_KEY = "sbaw1j2rw1safk37du";
+const CLIENT_SECRET = "xvLX67KL1QGLatKbtHRaUacLFnC0nNl6";
+const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 
 let USER_ACCESS_TOKEN = null;
 
@@ -21,7 +20,7 @@ app.use(express.json());
 /* -----------------------------------------------------
    1) LOGIN CON TIKTOK
 ----------------------------------------------------- */
-app.get('/login/tiktok', (_, res) => {
+app.get('/login/tiktok', (req, res) => {
     const state = Math.random().toString(36).slice(2);
 
     const scope = "user.info.stats,user.info.profile,user.info.basic";
@@ -42,7 +41,7 @@ app.get('/login/tiktok', (_, res) => {
    2) CALLBACK: CODE → ACCESS TOKEN
 ----------------------------------------------------- */
 app.get('/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
 
     if (!code) return res.status(400).send("No se recibió el code.");
 
@@ -77,7 +76,7 @@ app.get('/callback', async (req, res) => {
 /* -----------------------------------------------------
    3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
-app.get('/tiktok/user-stats', async (_, res) => {
+app.get('/tiktok/user-stats', async (req, res) => {
     if (!USER_ACCESS_TOKEN)
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
@@ -105,7 +104,7 @@ app.get('/tiktok/user-stats', async (_, res) => {
             }
         );
 
-        console.log("Respuesta TikTok v2: ", r.data);
+        console.log("✅ Respuesta TikTok v2:", r.data);
 
         const stats = r.data?.data?.user || {};
 
