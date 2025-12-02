@@ -23,7 +23,7 @@ app.use(express.json());
 app.get('/login/tiktok', (req, res) => {
     const state = Math.random().toString(36).slice(2);
 
-    const scope = "user.info.stats";
+    const scope = "user.info.stats,user.info.profile,user.info.basic";
 
     const authUrl =
         "https://www.tiktok.com/v2/auth/authorize/" +
@@ -81,22 +81,30 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
-        const fields = ["follower_count", "following_count", "likes_count", "video_count", "display_name", "avatar_url", "username"];
+        const fields = [
+            "follower_count",
+            "following_count",
+            "likes_count",
+            "video_count",
+            "display_name",
+            "avatar_url",
+            "username"
+        ];
 
-        const r = await axios.post(
-            "https://open-api.tiktok.com/user/info/",
-            {
-                access_token: USER_ACCESS_TOKEN,
-                fields: fields
-            },
+        // GET al endpoint v2 correcto
+        const r = await axios.get(
+            "https://open.tiktokapis.com/v2/user/info/",
             {
                 headers: {
-                    "Content-Type": "application/json"
+                    Authorization: `Bearer ${USER_ACCESS_TOKEN}`
+                },
+                params: {
+                    fields: fields.join(",")
                 }
             }
         );
 
-        console.log("✅ Respuesta TikTok:", r.data);
+        console.log("✅ Respuesta TikTok v2:", r.data);
 
         const stats = r.data?.data?.user || {};
 
@@ -119,7 +127,6 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(500).send("Error obteniendo estadísticas.");
     }
 });
-
 
 
 module.exports = app;
