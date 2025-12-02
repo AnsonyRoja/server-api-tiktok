@@ -81,20 +81,15 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
-        const r = await axios.post(
-            "https://open.tiktokapis.com/v2/user/info/",
-            {
-                fields: [
-                    "follower_count",
-                    "following_count",
-                    "likes_count",
-                    "video_count"
-                ]
-            },
+        const fields = ["follower_count", "following_count", "likes_count", "video_count"];
+        const r = await axios.get(
+            "https://open.tiktokapis.com/v2/user/info",
             {
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${USER_ACCESS_TOKEN}`
+                },
+                params: {
+                    fields: fields.join(",")
                 }
             }
         );
@@ -113,5 +108,6 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(500).send("Error obteniendo estadísticas.");
     }
 });
+
 
 module.exports = app;
