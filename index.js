@@ -84,7 +84,7 @@ app.get('/tiktok/user-stats', async (req, res) => {
         const fields = ["follower_count", "following_count", "likes_count", "video_count", "display_name", "avatar_url", "username"];
 
         const r = await axios.post(
-            "https://open-api.tiktok.com/v2/user/info/",
+            "https://open-api.tiktok.com/user/info/",
             {
                 access_token: USER_ACCESS_TOKEN,
                 fields: fields
@@ -96,7 +96,7 @@ app.get('/tiktok/user-stats', async (req, res) => {
             }
         );
 
-        console.log("✅ Respuesta TikTok v2:", r.data);
+        console.log("✅ Respuesta TikTok:", r.data);
 
         const stats = r.data?.data?.user || {};
 
