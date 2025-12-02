@@ -4,7 +4,7 @@ const app = express();
 const CLIENT_KEY = "aw0gu0r5pw4s8f8z";
 const CLIENT_SECRET = "yjuDDzr59AqlXuA5JjXcMKD85NmpLvN7";
 // Asegúrate de que esta URL esté registrada en tu app de TikTok
-const REDIRECT_URI = "http://localhost:3000/callback";
+const REDIRECT_URI = "https://server-api-tiktok-git-main-ansonys-projects.vercel.app/callback";
 // Estado temporal para guardar el Access Token (solo para este ejemplo)
 let ACCESS_TOKEN = null;
 
