@@ -15,7 +15,16 @@ let USER_ACCESS_TOKEN = null;
 let REFRESH_TOKEN = null; // Gu
 
 app.use(cookieParser());
-app.use(cors());
+app.use(cors({
+    origin: [
+        "http://localhost:3000",
+        "https://tudominio.com"
+    ],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+}));
+
 app.use(express.json());
 
 
