@@ -7,9 +7,9 @@ const qs = require('qs'); // npm i qs
 
 const app = express();
 
-const CLIENT_KEY = process.env.CLIENT_KEY || "aw0gu0r5pw4s8f8z";
-const CLIENT_SECRET = process.env.CLIENT_SECRET || "yjuDDzr59AqlXuA5JjXcMKD85NmpLvN7";
-const REDIRECT_URI = process.env.REDIRECT_URI || "https://server-api-tiktok.vercel.app/callback";
+const CLIENT_KEY = "sbaw1j2rw1safk37du";
+const CLIENT_SECRET = "xvLX67KL1QGLatKbtHRaUacLFnC0nNl6";
+const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 
 // tokens en memoria (para ejemplo). En producción guarda en DB/secret store.
 let USER_ACCESS_TOKEN = null;
@@ -20,7 +20,7 @@ app.use(cors()); // <- IMPORTANTE: ejecutar la función
 
 app.get('/login/tiktok', (req, res) => {
     const state = Math.random().toString(36).slice(2);
-    const scope = 'user.info.profile'; // o los scopes que necesites
+    const scope = 'user.info.basic'; // o los scopes que necesites
     const authUrl = 'https://www.tiktok.com/auth/authorize' +
         `?client_key=${encodeURIComponent(CLIENT_KEY)}` +
         `&response_type=code` +
