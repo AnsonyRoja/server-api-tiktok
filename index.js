@@ -81,12 +81,10 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
-        // Campos que queremos obtener
         const fields = ["follower_count", "following_count", "likes_count", "video_count", "display_name", "avatar_url", "username"];
 
-        // POST al endpoint oficial de TikTok Login Kit
         const r = await axios.post(
-            "https://open-api.tiktok.com/user/info/",
+            "https://open-api.tiktok.com/v2/user/info/",
             {
                 access_token: USER_ACCESS_TOKEN,
                 fields: fields
@@ -98,7 +96,7 @@ app.get('/tiktok/user-stats', async (req, res) => {
             }
         );
 
-        console.log("✅ Respuesta TikTok:", r.data);
+        console.log("✅ Respuesta TikTok v2:", r.data);
 
         const stats = r.data?.data?.user || {};
 
@@ -121,6 +119,7 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(500).send("Error obteniendo estadísticas.");
     }
 });
+
 
 
 module.exports = app;
