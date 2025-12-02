@@ -21,9 +21,7 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
-// -----------------------------------
-// 1) LOGIN CON TIKTOK
-// -----------------------------------
+
 app.get('/login/tiktok', (req, res) => {
     const state = Math.random().toString(36).slice(2);
     const scope = "user.info.stats,user.info.profile,user.info.basic";
