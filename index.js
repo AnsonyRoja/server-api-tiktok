@@ -35,21 +35,21 @@ async function refreshToken() {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        USER_ACCESS_TOKEN =
-            tokenRes.data?.data?.access_token || tokenRes.data?.access_token;
+        const data = tokenRes.data?.data;
 
-        // Actualizamos el refresh token si TikTok devuelve uno nuevo
-        REFRESH_TOKEN =
-            tokenRes.data?.data?.refresh_token || REFRESH_TOKEN;
+        USER_ACCESS_TOKEN = data?.access_token;
+        REFRESH_TOKEN = data?.refresh_token || REFRESH_TOKEN;
 
-        console.log("✅ Token renovado:", USER_ACCESS_TOKEN);
+        console.log("♻ TOKEN REFRESCADO");
+        console.log("🔑 Nuevo ACCESS:", USER_ACCESS_TOKEN);
+        console.log("🔄 Nuevo REFRESH:", REFRESH_TOKEN);
+
         return USER_ACCESS_TOKEN;
     } catch (err) {
         console.error("REFRESH ERROR:", err.response?.data || err.message);
         throw new Error("Error renovando token");
     }
 }
-
 /* -----------------------------------------------------
    1) LOGIN CON TIKTOK
 ----------------------------------------------------- */
@@ -93,13 +93,15 @@ app.get('/callback', async (req, res) => {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        USER_ACCESS_TOKEN =
-            tokenRes.data?.data?.access_token ||
-            tokenRes.data?.access_token;
+        const data = tokenRes.data?.data;
 
-        console.log("USER ACCESS TOKEN:", USER_ACCESS_TOKEN);
+        USER_ACCESS_TOKEN = data?.access_token;
+        REFRESH_TOKEN = data?.refresh_token;
 
-        res.send("Login correcto ✔ Ahora puedes llamar /tiktok/user-stats");
+        console.log("🔑 Nuevo ACCESS TOKEN:", USER_ACCESS_TOKEN);
+        console.log("♻ Nuevo REFRESH TOKEN:", REFRESH_TOKEN);
+
+        res.send("Login correcto ✔ Ya puedes usar /tiktok/user-stats");
     } catch (err) {
         console.error("TOKEN ERROR:", err.response?.data || err.message);
         res.status(500).send("Error en callback");
