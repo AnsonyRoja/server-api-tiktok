@@ -12,10 +12,43 @@ const CLIENT_SECRET = "xvLX67KL1QGLatKbtHRaUacLFnC0nNl6";
 const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 
 let USER_ACCESS_TOKEN = null;
+let REFRESH_TOKEN = null; // Gu
 
 app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
+
+
+async function refreshToken() {
+    if (!REFRESH_TOKEN) throw new Error("No hay refresh token disponible");
+
+    try {
+        const body = qs.stringify({
+            client_key: CLIENT_KEY,
+            grant_type: "refresh_token",
+            refresh_token: REFRESH_TOKEN
+        });
+
+        const tokenRes = await axios.post(
+            "https://open.tiktokapis.com/v2/oauth/refresh_token/",
+            body,
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+
+        USER_ACCESS_TOKEN =
+            tokenRes.data?.data?.access_token || tokenRes.data?.access_token;
+
+        // Actualizamos el refresh token si TikTok devuelve uno nuevo
+        REFRESH_TOKEN =
+            tokenRes.data?.data?.refresh_token || REFRESH_TOKEN;
+
+        console.log("✅ Token renovado:", USER_ACCESS_TOKEN);
+        return USER_ACCESS_TOKEN;
+    } catch (err) {
+        console.error("REFRESH ERROR:", err.response?.data || err.message);
+        throw new Error("Error renovando token");
+    }
+}
 
 /* -----------------------------------------------------
    1) LOGIN CON TIKTOK
@@ -119,6 +152,47 @@ app.get('/tiktok/user-stats', async (req, res) => {
         });
 
     } catch (err) {
+
+        if (err.response?.status === 401) {
+            await refreshToken();
+            const fields = [
+                "follower_count",
+                "following_count",
+                "likes_count",
+                "video_count",
+                "display_name",
+                "avatar_url",
+                "username"
+            ];
+
+
+            const r = await axios.get(
+                "https://open.tiktokapis.com/v2/user/info/",
+                {
+                    headers: {
+                        Authorization: `Bearer ${USER_ACCESS_TOKEN}`
+                    },
+                    params: {
+                        fields: fields.join(",")
+                    }
+                }
+            );
+
+            const stats = r.data?.data?.user || {};
+
+            return res.json({
+                follower_count: stats.follower_count,
+                following_count: stats.following_count,
+                likes_count: stats.likes_count,
+                video_count: stats.video_count,
+                display_name: stats.display_name,
+                avatar_url: stats.avatar_url,
+                username: stats.username
+            });
+
+        } else {
+            throw err;
+        }
         console.error("STATS ERROR:", {
             message: err.message,
             response_data: err.response?.data,
