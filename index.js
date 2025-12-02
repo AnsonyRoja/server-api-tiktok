@@ -82,6 +82,9 @@ app.get('/tiktok/user-stats', async (req, res) => {
 
     try {
         const fields = ["follower_count", "following_count", "likes_count", "video_count"];
+
+        console.log("🔹 Llamando a TikTok con token:", USER_ACCESS_TOKEN);
+
         const r = await axios.get(
             "https://open.tiktokapis.com/v2/user/info",
             {
@@ -94,7 +97,13 @@ app.get('/tiktok/user-stats', async (req, res) => {
             }
         );
 
+        console.log("🔹 Respuesta completa de TikTok:", r.data);
+
         const stats = r.data?.data?.user || {};
+
+        if (!stats.follower_count) {
+            console.warn("⚠ No se encontró follower_count. Revisa el scope del token.");
+        }
 
         return res.json({
             follower_count: stats.follower_count,
@@ -104,8 +113,14 @@ app.get('/tiktok/user-stats', async (req, res) => {
         });
 
     } catch (err) {
-        console.error("STATS ERROR:", err.response?.data || err.message);
-        return res.status(500).send("Error obteniendo estadísticas.");
+        console.error("❌ STATS ERROR DETALLE:", {
+            message: err.message,
+            response_data: err.response?.data,
+            response_status: err.response?.status,
+            response_headers: err.response?.headers
+        });
+
+        return res.status(500).send("Error obteniendo estadísticas. Revisa logs del servidor.");
     }
 });
 
