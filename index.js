@@ -1,8 +1,6 @@
 const express = require('express');
 const axios = require('axios'); // Para hacer peticiones HTTP
 const app = express();
-const port = 3000;
-
 const CLIENT_KEY = "sbawqncaggf04rtmha";
 const CLIENT_SECRET = "6i3JsHC2Xwp1vWCwtHoJN60k5f5IQSZq";
 // Asegúrate de que esta URL esté registrada en tu app de TikTok
@@ -90,8 +88,6 @@ app.get('/followers/50', async (req, res) => {
     }
 });
 
-// Inicia el servidor
-app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
-    console.log(`Inicia sesión aquí: http://localhost:${port}/login/tiktok`);
-});
+
+
+module.exports = app;
