@@ -101,6 +101,24 @@ app.get('/callback', async (req, res) => {
         console.log("🔑 Nuevo ACCESS TOKEN:", USER_ACCESS_TOKEN);
         console.log("♻ Nuevo REFRESH TOKEN:", REFRESH_TOKEN);
 
+        if (!USER_ACCESS_TOKEN)
+            return res.status(200).send("No se generó access token");
+
+        res.cookie("access_token", USER_ACCESS_TOKEN, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
+        });
+
+        res.cookie("refresh_token", REFRESH_TOKEN, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            maxAge: 1000 * 60 * 60 * 24 * 60 // 60 días
+        });
+
+
         res.send("Login correcto ✔ Ya puedes usar /tiktok/user-stats");
     } catch (err) {
         console.error("TOKEN ERROR:", err.response?.data || err.message);
@@ -109,7 +127,7 @@ app.get('/callback', async (req, res) => {
 });
 
 
-const getUserStatsForTiktok = async (res) => {
+const getUserStatsForTiktok = async (res, USER_ACCESS_TOKENS) => {
 
 
     const fields = [
@@ -127,7 +145,7 @@ const getUserStatsForTiktok = async (res) => {
         "https://open.tiktokapis.com/v2/user/info/",
         {
             headers: {
-                Authorization: `Bearer ${USER_ACCESS_TOKEN}`
+                Authorization: `Bearer ${USER_ACCESS_TOKENS}`
             },
             params: {
                 fields: fields.join(",")
@@ -161,13 +179,13 @@ app.get('/tiktok/user-stats', async (_, res) => {
 
     try {
 
-        return await getUserStatsForTiktok(res);
+        return await getUserStatsForTiktok(res, USER_ACCESS_TOKEN);
 
     } catch (err) {
 
         if (err.response?.status === 401) {
             await refreshToken();
-            return await getUserStatsForTiktok(res);
+            return await getUserStatsForTiktok(res, USER_ACCESS_TOKEN);
 
         } else {
             console.error("STATS ERROR:", {
