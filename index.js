@@ -11,20 +11,19 @@ const CLIENT_KEY = "sbaw1j2rw1safk37du";
 const CLIENT_SECRET = "xvLX67KL1QGLatKbtHRaUacLFnC0nNl6";
 const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 
-// tokens en memoria (solo para demo)
 let USER_ACCESS_TOKEN = null;
-let CLIENT_ACCESS_TOKEN = null;
 
 app.use(cookieParser());
-app.use(cors()); // ← CORREGIDO
+app.use(cors());
 app.use(express.json());
 
 /* -----------------------------------------------------
-   1) LOGIN CON TIKTOK (USER CONSENT)
+   1) LOGIN CON TIKTOK
 ----------------------------------------------------- */
 app.get('/login/tiktok', (req, res) => {
     const state = Math.random().toString(36).slice(2);
-    const scope = "user.info.basic";
+
+    const scope = "user.info.stats";
 
     const authUrl =
         "https://www.tiktok.com/v2/auth/authorize/" +
@@ -34,104 +33,84 @@ app.get('/login/tiktok', (req, res) => {
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
         `&state=${encodeURIComponent(state)}`;
 
-    res.cookie('oauth_state', state, { httpOnly: true, secure: true });
+    res.cookie("oauth_state", state, { httpOnly: true, secure: true });
     res.redirect(authUrl);
 });
 
 /* -----------------------------------------------------
-   2) CALLBACK (INTERCAMBIO CODE → ACCESS TOKEN)
+   2) CALLBACK: CODE → ACCESS TOKEN
 ----------------------------------------------------- */
 app.get('/callback', async (req, res) => {
     const { code, state } = req.query;
-    const savedState = req.cookies?.oauth_state;
 
-    if (!code) return res.status(400).send("No se recibió el CODE.");
-    if (!state || state !== savedState) {
-        console.warn("⚠ STATE mismatch (posible CSRF)");
-    }
+    if (!code) return res.status(400).send("No se recibió el code.");
 
     try {
         const body = qs.stringify({
             client_key: CLIENT_KEY,
             client_secret: CLIENT_SECRET,
-            code: code,
+            code,
             grant_type: "authorization_code",
             redirect_uri: REDIRECT_URI
         });
 
-        const tokenResponse = await axios.post(
+        const tokenRes = await axios.post(
             "https://open.tiktokapis.com/v2/oauth/token/",
             body,
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-
-        console.log("TOKEN RESPONSE:", tokenResponse.data);
 
         USER_ACCESS_TOKEN =
-            tokenResponse.data?.data?.access_token ||
-            tokenResponse.data?.access_token;
+            tokenRes.data?.data?.access_token ||
+            tokenRes.data?.access_token;
 
-        return res.send("User access token obtenido correctamente ✔");
+        console.log("USER ACCESS TOKEN:", USER_ACCESS_TOKEN);
+
+        res.send("Login correcto ✔ Ahora puedes llamar /tiktok/user-stats");
     } catch (err) {
-        console.error("Error en el intercambio TOKEN:", err.response?.data || err.message);
-        return res.status(500).send("Error intercambiando el code.");
+        console.error("TOKEN ERROR:", err.response?.data || err.message);
+        res.status(500).send("Error en callback");
     }
 });
 
 /* -----------------------------------------------------
-   3) OBTENER CLIENT ACCESS TOKEN (NECESARIO PARA FOLLOWERS)
+   3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
-app.get('/client-token', async (req, res) => {
-    try {
-        const body = qs.stringify({
-            client_key: CLIENT_KEY,
-            client_secret: CLIENT_SECRET,
-            grant_type: "client_credentials"
-        });
-
-        const r = await axios.post(
-            "https://open.tiktokapis.com/v2/oauth/token/",
-            body,
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
-
-        CLIENT_ACCESS_TOKEN =
-            r.data?.data?.access_token ||
-            r.data?.access_token;
-
-        console.log("CLIENT TOKEN:", r.data);
-        res.json({ client_access_token: CLIENT_ACCESS_TOKEN });
-    } catch (err) {
-        console.error("Error obteniendo client token:", err.response?.data || err.message);
-        res.status(500).send("Error obteniendo client token.");
-    }
-});
-
-/* -----------------------------------------------------
-   4) ENDPOINT PARA RESEARCH API (FOLLOWERS)
------------------------------------------------------ */
-app.post("/research/followers", async (req, res) => {
-    const { username, max_count = 50, cursor } = req.body;
-
-    if (!CLIENT_ACCESS_TOKEN)
-        return res.status(401).send("Client token no disponible. Llama a /client-token primero.");
+app.get('/tiktok/user-stats', async (req, res) => {
+    if (!USER_ACCESS_TOKEN)
+        return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
         const r = await axios.post(
-            "https://open.tiktokapis.com/v2/research/user/followers/",
-            { username, max_count, cursor },
+            "https://open.tiktokapis.com/v2/user/info/",
+            {
+                fields: [
+                    "follower_count",
+                    "following_count",
+                    "likes_count",
+                    "video_count"
+                ]
+            },
             {
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${CLIENT_ACCESS_TOKEN}`
+                    Authorization: `Bearer ${USER_ACCESS_TOKEN}`
                 }
             }
         );
 
-        return res.json(r.data);
+        const stats = r.data?.data?.user || {};
+
+        return res.json({
+            follower_count: stats.follower_count,
+            following_count: stats.following_count,
+            likes_count: stats.likes_count,
+            video_count: stats.video_count
+        });
+
     } catch (err) {
-        console.error("Error Research followers:", err.response?.data || err.message);
-        return res.status(500).send("Error trayendo followers.");
+        console.error("STATS ERROR:", err.response?.data || err.message);
+        return res.status(500).send("Error obteniendo estadísticas.");
     }
 });
 
