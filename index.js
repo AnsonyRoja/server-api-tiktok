@@ -154,6 +154,21 @@ const getUserStatsForTiktok = async (res) => {
 app.get('/tiktok/user-stats', async (req, res) => {
     if (!USER_ACCESS_TOKEN)
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
+    const state = Math.random().toString(36).slice(2);
+
+    const scope = "user.info.stats,user.info.profile,user.info.basic";
+
+    const authUrl =
+        "https://www.tiktok.com/v2/auth/authorize/" +
+        `?client_key=${encodeURIComponent(CLIENT_KEY)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(scope)}` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&state=${encodeURIComponent(state)}`;
+
+    res.cookie("oauth_state", state, { httpOnly: true, secure: true });
+    res.redirect(authUrl);
+
 
     try {
 
