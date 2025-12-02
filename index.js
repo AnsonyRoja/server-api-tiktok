@@ -102,7 +102,7 @@ app.get('/callback', async (req, res) => {
         console.log("♻ Nuevo REFRESH TOKEN:", REFRESH_TOKEN);
 
         if (!USER_ACCESS_TOKEN)
-            return res.status(200).send("No se generó access token");
+            return res.status(200).send(`No se generó access token ${data}`);
 
         res.cookie("access_token", USER_ACCESS_TOKEN, {
             httpOnly: true,
