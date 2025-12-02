@@ -53,7 +53,7 @@ async function refreshToken() {
 /* -----------------------------------------------------
    1) LOGIN CON TIKTOK
 ----------------------------------------------------- */
-app.get('/login/tiktok', (req, res) => {
+app.get('/login/tiktok', (_, res) => {
     const state = Math.random().toString(36).slice(2);
 
     const scope = "user.info.stats,user.info.profile,user.info.basic";
@@ -74,7 +74,7 @@ app.get('/login/tiktok', (req, res) => {
    2) CALLBACK: CODE → ACCESS TOKEN
 ----------------------------------------------------- */
 app.get('/callback', async (req, res) => {
-    const { code, state } = req.query;
+    const { code } = req.query;
 
     if (!code) return res.status(400).send("No se recibió el code.");
 
@@ -151,23 +151,8 @@ const getUserStatsForTiktok = async (res) => {
 /* -----------------------------------------------------
    3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
-app.get('/tiktok/user-stats', async (req, res) => {
+app.get('/tiktok/user-stats', async (_, res) => {
     if (!USER_ACCESS_TOKEN) {
-
-        const state = Math.random().toString(36).slice(2);
-
-        const scope = "user.info.stats,user.info.profile,user.info.basic";
-
-        const authUrl =
-            "https://www.tiktok.com/v2/auth/authorize/" +
-            `?client_key=${encodeURIComponent(CLIENT_KEY)}` +
-            `&response_type=code` +
-            `&scope=${encodeURIComponent(scope)}` +
-            `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-            `&state=${encodeURIComponent(state)}`;
-
-        res.cookie("oauth_state", state, { httpOnly: true, secure: true });
-        res.redirect(authUrl);
 
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
     }
