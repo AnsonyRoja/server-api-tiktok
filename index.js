@@ -1,24 +1,43 @@
 const express = require('express');
 const axios = require('axios'); // Para hacer peticiones HTTP
 const app = express();
+const cookieParser = require('cookie-parser'); // Nuevo
+const cors = require('cors'); // Nuevo
 const CLIENT_KEY = "aw0gu0r5pw4s8f8z";
 const CLIENT_SECRET = "yjuDDzr59AqlXuA5JjXcMKD85NmpLvN7";
 // Asegúrate de que esta URL esté registrada en tu app de TikTok
-const REDIRECT_URI = "https://server-api-tiktok-git-main-ansonys-projects.vercel.app/callback";
+const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 // Estado temporal para guardar el Access Token (solo para este ejemplo)
 let ACCESS_TOKEN = null;
-
+app.use(cookieParser());
+app.use(cors({
+    origin: '*', // Permitir cualquier origen (ajusta esto en producción)
+    credentials: true // Necesario para enviar cookies
+}));
 // A. Endpoint para Iniciar la Autenticación
 app.get('/login/tiktok', (req, res) => {
-    // Los 'scopes' son los permisos que solicitas (necesitas user.info.follower)
+    // 1. Generar el estado CSRF (cadena aleatoria)
+    const csrfState = Math.random().toString(36).substring(2) + Date.now();
+
+    // 2. Guardar el estado CSRF como cookie (maxAge: 60000ms = 1 minuto)
+    // Se usará después para verificar que la respuesta de TikTok es legítima.
+    res.cookie('csrfState', csrfState, { maxAge: 60000, httpOnly: true, secure: true, sameSite: 'Lax' });
+
+    // 3. Definir los scopes (permisos)
+    // El ejemplo de TikTok usa 'user.info.basic', pero usaremos el que ya tenías:
     const scopes = 'user.info.profile';
 
-    const authUrl = `https://www.tiktok.com/auth/authorize?client_key=${CLIENT_KEY}&scope=${scopes}&response_type=code&redirect_uri=${REDIRECT_URI}`;
+    // 4. Construir la URL de autorización con el parámetro 'state'
+    const authUrl = 'https://www.tiktok.com/auth/authorize?' +
+        `client_key=${CLIENT_KEY}` +
+        `&scope=${scopes}` +
+        '&response_type=code' +
+        `&redirect_uri=${REDIRECT_URI}` +
+        `&state=${csrfState}`; // <-- ¡Parámetro 'state' agregado!
 
     // Redirige al navegador a la URL de TikTok
     res.redirect(authUrl);
 });
-
 // B. Endpoint de Callback (Paso 3: Intercambio de Código por Token)
 app.get('/callback', async (req, res) => {
     const authorizationCode = req.query.code; // El código temporal que devuelve TikTok
