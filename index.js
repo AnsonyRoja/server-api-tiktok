@@ -106,6 +106,48 @@ app.get('/callback', async (req, res) => {
     }
 });
 
+
+const getUserStatsForTiktok = async (res) => {
+
+
+    const fields = [
+        "follower_count",
+        "following_count",
+        "likes_count",
+        "video_count",
+        "display_name",
+        "avatar_url",
+        "username"
+    ];
+
+    // GET al endpoint v2 correcto
+    const r = await axios.get(
+        "https://open.tiktokapis.com/v2/user/info/",
+        {
+            headers: {
+                Authorization: `Bearer ${USER_ACCESS_TOKEN}`
+            },
+            params: {
+                fields: fields.join(",")
+            }
+        }
+    );
+
+    console.log("✅ Respuesta TikTok v2:", r.data);
+
+    const stats = r.data?.data?.user || {};
+
+    return res.json({
+        follower_count: stats.follower_count,
+        following_count: stats.following_count,
+        likes_count: stats.likes_count,
+        video_count: stats.video_count,
+        display_name: stats.display_name,
+        avatar_url: stats.avatar_url,
+        username: stats.username
+    });
+}
+
 /* -----------------------------------------------------
    3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
@@ -114,92 +156,25 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
-        const fields = [
-            "follower_count",
-            "following_count",
-            "likes_count",
-            "video_count",
-            "display_name",
-            "avatar_url",
-            "username"
-        ];
 
-        // GET al endpoint v2 correcto
-        const r = await axios.get(
-            "https://open.tiktokapis.com/v2/user/info/",
-            {
-                headers: {
-                    Authorization: `Bearer ${USER_ACCESS_TOKEN}`
-                },
-                params: {
-                    fields: fields.join(",")
-                }
-            }
-        );
-
-        console.log("✅ Respuesta TikTok v2:", r.data);
-
-        const stats = r.data?.data?.user || {};
-
-        return res.json({
-            follower_count: stats.follower_count,
-            following_count: stats.following_count,
-            likes_count: stats.likes_count,
-            video_count: stats.video_count,
-            display_name: stats.display_name,
-            avatar_url: stats.avatar_url,
-            username: stats.username
-        });
+        return await getUserStatsForTiktok(res);
 
     } catch (err) {
 
         if (err.response?.status === 401) {
             await refreshToken();
-            const fields = [
-                "follower_count",
-                "following_count",
-                "likes_count",
-                "video_count",
-                "display_name",
-                "avatar_url",
-                "username"
-            ];
-
-
-            const r = await axios.get(
-                "https://open.tiktokapis.com/v2/user/info/",
-                {
-                    headers: {
-                        Authorization: `Bearer ${USER_ACCESS_TOKEN}`
-                    },
-                    params: {
-                        fields: fields.join(",")
-                    }
-                }
-            );
-
-            const stats = r.data?.data?.user || {};
-
-            return res.json({
-                follower_count: stats.follower_count,
-                following_count: stats.following_count,
-                likes_count: stats.likes_count,
-                video_count: stats.video_count,
-                display_name: stats.display_name,
-                avatar_url: stats.avatar_url,
-                username: stats.username
-            });
+            return await getUserStatsForTiktok(res);
 
         } else {
-            throw err;
+            console.error("STATS ERROR:", {
+                message: err.message,
+                response_data: err.response?.data,
+                response_status: err.response?.status
+            });
+            return res.status(500).send("Error obteniendo estadísticas.");
         }
-        console.error("STATS ERROR:", {
-            message: err.message,
-            response_data: err.response?.data,
-            response_status: err.response?.status
-        });
-        return res.status(500).send("Error obteniendo estadísticas.");
     }
+
 });
 
 
