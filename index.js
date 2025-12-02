@@ -1,6 +1,6 @@
 // server.js
 const express = require('express');
-require().dotenv('.env');
+require('dotenv').config();
 const axios = require('axios');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
