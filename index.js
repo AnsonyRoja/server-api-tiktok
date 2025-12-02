@@ -81,46 +81,44 @@ app.get('/tiktok/user-stats', async (req, res) => {
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
 
     try {
-        const fields = ["follower_count", "following_count", "likes_count", "video_count"];
+        // Campos que queremos obtener
+        const fields = ["follower_count", "following_count", "likes_count", "video_count", "display_name", "avatar_url", "username"];
 
-        console.log("🔹 Llamando a TikTok con token:", USER_ACCESS_TOKEN);
-
-        const r = await axios.get(
-            "https://open.tiktokapis.com/v2/user/info",
+        // POST al endpoint oficial de TikTok Login Kit
+        const r = await axios.post(
+            "https://open-api.tiktok.com/user/info/",
+            {
+                access_token: USER_ACCESS_TOKEN,
+                fields: fields
+            },
             {
                 headers: {
-                    Authorization: `Bearer ${USER_ACCESS_TOKEN}`
-                },
-                params: {
-                    fields: fields.join(",")
+                    "Content-Type": "application/json"
                 }
             }
         );
 
-        console.log("🔹 Respuesta completa de TikTok:", r.data);
+        console.log("✅ Respuesta TikTok:", r.data);
 
         const stats = r.data?.data?.user || {};
-
-        if (!stats.follower_count) {
-            console.warn("⚠ No se encontró follower_count. Revisa el scope del token.");
-        }
 
         return res.json({
             follower_count: stats.follower_count,
             following_count: stats.following_count,
             likes_count: stats.likes_count,
-            video_count: stats.video_count
+            video_count: stats.video_count,
+            display_name: stats.display_name,
+            avatar_url: stats.avatar_url,
+            username: stats.username
         });
 
     } catch (err) {
-        console.error("❌ STATS ERROR DETALLE:", {
+        console.error("STATS ERROR:", {
             message: err.message,
             response_data: err.response?.data,
-            response_status: err.response?.status,
-            response_headers: err.response?.headers
+            response_status: err.response?.status
         });
-
-        return res.status(500).send("Error obteniendo estadísticas. Revisa logs del servidor.");
+        return res.status(500).send("Error obteniendo estadísticas.");
     }
 });
 
