@@ -1,112 +1,122 @@
+// server.js (o index.js)
 const express = require('express');
-const axios = require('axios'); // Para hacer peticiones HTTP
+const axios = require('axios');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const qs = require('qs'); // npm i qs
+
 const app = express();
-const cookieParser = require('cookie-parser'); // Nuevo
-const cors = require('cors'); // Nuevo
-const CLIENT_KEY = "aw0gu0r5pw4s8f8z";
-const CLIENT_SECRET = "yjuDDzr59AqlXuA5JjXcMKD85NmpLvN7";
-// Asegúrate de que esta URL esté registrada en tu app de TikTok
-const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
-// Estado temporal para guardar el Access Token (solo para este ejemplo)
-let ACCESS_TOKEN = null;
+
+const CLIENT_KEY = process.env.CLIENT_KEY || "aw0gu0r5pw4s8f8z";
+const CLIENT_SECRET = process.env.CLIENT_SECRET || "yjuDDzr59AqlXuA5JjXcMKD85NmpLvN7";
+const REDIRECT_URI = process.env.REDIRECT_URI || "https://server-api-tiktok.vercel.app/callback";
+
+// tokens en memoria (para ejemplo). En producción guarda en DB/secret store.
+let USER_ACCESS_TOKEN = null;
+let CLIENT_ACCESS_TOKEN = null;
+
 app.use(cookieParser());
-app.use(cors({
-    origin: '*', // Permitir cualquier origen (ajusta esto en producción)
-    credentials: true // Necesario para enviar cookies
-}));
-// A. Endpoint para Iniciar la Autenticación
+app.use(cors()); // <- IMPORTANTE: ejecutar la función
+
 app.get('/login/tiktok', (req, res) => {
-    // 1. Generar el estado CSRF (cadena aleatoria)
-    const csrfState = Math.random().toString(36).substring(2) + Date.now();
+    const state = Math.random().toString(36).slice(2);
+    const scope = 'user.info.profile'; // o los scopes que necesites
+    const authUrl = 'https://www.tiktok.com/auth/authorize' +
+        `?client_key=${encodeURIComponent(CLIENT_KEY)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(scope)}` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&state=${encodeURIComponent(state)}`;
 
-    // 2. Guardar el estado CSRF como cookie (maxAge: 60000ms = 1 minuto)
-    // Se usará después para verificar que la respuesta de TikTok es legítima.
-    res.cookie('csrfState', csrfState, { maxAge: 60000, httpOnly: true, secure: true, sameSite: 'Lax' });
-
-    // 3. Definir los scopes (permisos)
-    // El ejemplo de TikTok usa 'user.info.basic', pero usaremos el que ya tenías:
-    const scopes = 'user.info.profile';
-
-    // 4. Construir la URL de autorización con el parámetro 'state'
-    const authUrl = 'https://www.tiktok.com/auth/authorize?' +
-        `client_key=${CLIENT_KEY}` +
-        `&scope=${scopes}` +
-        '&response_type=code' +
-        `&redirect_uri=${REDIRECT_URI}` +
-        `&state=${csrfState}`; // <-- ¡Parámetro 'state' agregado!
-
-    // Redirige al navegador a la URL de TikTok
-    res.redirect(authUrl);
+    res.cookie('oauth_state', state, { httpOnly: true, secure: true });
+    return res.redirect(authUrl);
 });
-// B. Endpoint de Callback (Paso 3: Intercambio de Código por Token)
+
 app.get('/callback', async (req, res) => {
-    const authorizationCode = req.query.code; // El código temporal que devuelve TikTok
+    const { code, state } = req.query;
+    const savedState = req.cookies?.oauth_state;
 
-    if (!authorizationCode) {
-        return res.status(400).send("No se encontró el código de autorización.");
+    if (!code) return res.status(400).send('No se recibió code.');
+    if (!state || state !== savedState) {
+        // opcional: validar state para evitar CSRF
+        console.warn('State mismatch (posible CSRF).');
     }
 
     try {
-        // Solicitud POST a TikTok para intercambiar el código por el Access Token
-        const tokenResponse = await axios.post('https://open.tiktokapis.com/v2/oauth/token/', null, {
-            params: {
-                client_key: CLIENT_KEY,
-                client_secret: CLIENT_SECRET,
-                code: authorizationCode,
-                grant_type: 'authorization_code',
-                redirect_uri: REDIRECT_URI
-            },
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
+        // INTERCAMBIO: enviar form-urlencoded en el body (no params)
+        const body = qs.stringify({
+            client_key: CLIENT_KEY,
+            client_secret: CLIENT_SECRET,
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: REDIRECT_URI
         });
 
-        ACCESS_TOKEN = tokenResponse.data.access_token;
-        res.send(`Token de Acceso Obtenido. Ahora puedes ir a /followers/50. Token: ${ACCESS_TOKEN}`);
+        const tokenResponse = await axios.post(
+            'https://open.tiktokapis.com/v2/oauth/token/',
+            body,
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
 
-    } catch (error) {
-        console.error('Error al obtener el token:', error.response ? error.response.data : error.message);
-        res.status(500).send("Error al obtener el Access Token.");
+        // La respuesta puede contener access_token, open_id, expires_in...
+        USER_ACCESS_TOKEN = tokenResponse.data?.data?.access_token || tokenResponse.data?.access_token;
+        console.log('TOKEN RESPONSE:', tokenResponse.data);
+        return res.send(`User access token obtenido. Ahora puedes usar endpoints autorizados.`);
+    } catch (err) {
+        console.error('Error token exchange:', err.response ? err.response.data : err.message);
+        return res.status(500).send('Error intercambiando el código. Mira logs del servidor.');
     }
 });
 
+/* OPCIONAL: endpoint para obtener client access token (grant_type=client_credentials)
+   Necesario para Research API (followers) que pide client token en Authorization header. */
+app.get('/client-token', async (req, res) => {
+    try {
+        const body = qs.stringify({
+            client_key: CLIENT_KEY,
+            client_secret: CLIENT_SECRET,
+            grant_type: 'client_credentials'
+        });
 
-// C. Endpoint para Traer los Últimos 50 Seguidores
-app.get('/followers/50', async (req, res) => {
-    if (!ACCESS_TOKEN) {
-        return res.status(401).send("Error: Access Token no disponible. Por favor, primero inicia sesión en /login/tiktok.");
+        const r = await axios.post(
+            'https://open.tiktokapis.com/v2/oauth/token/',
+            body,
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+
+        CLIENT_ACCESS_TOKEN = r.data?.data?.access_token || r.data?.access_token;
+        console.log('Client token response:', r.data);
+        res.json({ client_access_token: CLIENT_ACCESS_TOKEN });
+    } catch (err) {
+        console.error('Error getting client token:', err.response ? err.response.data : err.message);
+        res.status(500).send('Error obteniendo client token.');
     }
+});
+
+/* Endpoint para traer followers usando Research API (POST)
+   Requiere: scope research.data.basic y Authorization: Bearer <client_token>
+*/
+app.post('/research/followers', express.json(), async (req, res) => {
+    const { username, max_count = 50, cursor } = req.body;
+    if (!CLIENT_ACCESS_TOKEN) return res.status(401).send('Client token no disponible. Llama /client-token primero.');
 
     try {
-        const followersResponse = await axios.get('https://open.tiktokapis.com/v2/user/list/follower/', {
-            headers: {
-                // El Access Token debe ir en el encabezado Authorization
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            params: {
-                // Establecemos el límite a 50
-                max_count: 50,
-                // Indicamos los campos que queremos en la respuesta (el display_name es el nombre)
-                fields: 'display_name,username'
+        const r = await axios.post(
+            'https://open.tiktokapis.com/v2/research/user/followers/',
+            { username, max_count, cursor },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CLIENT_ACCESS_TOKEN}`
+                }
             }
-        });
+        );
 
-        const followerNames = followersResponse.data.data.users.map(user => user.display_name);
-
-        res.json({
-            count: followerNames.length,
-            followers: followerNames,
-            // Información necesaria si quieres traer más de 50 (Paginación)
-            next_cursor: followersResponse.data.data.cursor
-        });
-
-    } catch (error) {
-        console.error('Error al obtener seguidores:', error.response ? error.response.data : error.message);
-        res.status(500).send("Error al obtener la lista de seguidores.");
+        return res.json(r.data);
+    } catch (err) {
+        console.error('Error Research followers:', err.response ? err.response.data : err.message);
+        return res.status(500).send('Error obteniendo followers. Mira logs del servidor.');
     }
 });
-
-
 
 module.exports = app;
