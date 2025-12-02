@@ -76,6 +76,8 @@ app.get('/login/tiktok', (_, res) => {
 app.get('/callback', async (req, res) => {
     const { code } = req.query;
 
+    console.log('Codigo', code);
+
     if (!code) return res.status(400).send("No se recibió el code.");
 
     try {
