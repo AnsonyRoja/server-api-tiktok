@@ -7,8 +7,8 @@ const qs = require('qs');
 
 const app = express();
 
-const CLIENT_KEY = "sbaw1j2rw1safk37du";
-const CLIENT_SECRET = "xvLX67KL1QGLatKbtHRaUacLFnC0nNl6";
+const CLIENT_KEY = "sbaw6m14w32eixys4d";
+const CLIENT_SECRET = "mwa309Y8ClEpjtP30OEr7axGR20Y4Heg";
 const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
 
 let USER_ACCESS_TOKEN = null;
