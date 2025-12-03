@@ -92,7 +92,7 @@ app.get('/callback', async (req, res) => {
             redirect_uri: REDIRECT_URI
         });
 
-        console.log("cuerpo".body);
+        console.log("cuerpo", body);
 
         const tokenRes = await axios.post(
             "https://open.tiktokapis.com/v2/oauth/token/",
