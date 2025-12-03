@@ -7,20 +7,28 @@ const qs = require('qs');
 
 const app = express();
 const url = require('url');
+const { createClient } = require("redis");
 
 const CLIENT_KEY = "sbaw6m14w32eixys4d";
 const CLIENT_SECRET = "mwa309Y8ClEpjtP30OEr7axGR20Y4Heg";
 const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
-
-let USER_ACCESS_TOKEN = null;
-let REFRESH_TOKEN = null; // Gu
+const REDIS_URL = "redis://default:VxDWjGkqGePIu9v6SmSCJu9XjmJ46sXw@redis-19575.c62.us-east-1-4.ec2.cloud.redislabs.com:19575"
 
 app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
+const redis = createClient({
+    url: REDIS_URL
+});
+
+redis.on("error", (err) => console.error("Redis Error:", err));
+redis.connect();
+
 
 
 async function refreshToken() {
+    const REFRESH_TOKEN = await redis.get("tiktok_refresh_token");
+
     if (!REFRESH_TOKEN) throw new Error("No hay refresh token disponible");
 
     try {
@@ -36,16 +44,16 @@ async function refreshToken() {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        const data = tokenRes.data?.data;
+        const data = tokenRes.data.access_token !== undefined ? tokenRes.data : tokenRes.data?.data;
 
-        USER_ACCESS_TOKEN = data?.access_token;
-        REFRESH_TOKEN = data?.refresh_token || REFRESH_TOKEN;
+        await redis.set("tiktok_access_token", data.access_token);
+        await redis.set("tiktok_refresh_token", data.refresh_token);
 
         console.log("♻ TOKEN REFRESCADO");
-        console.log("🔑 Nuevo ACCESS:", USER_ACCESS_TOKEN);
-        console.log("🔄 Nuevo REFRESH:", REFRESH_TOKEN);
+        console.log("🔑 Nuevo ACCESS:", data.access_token);
+        console.log("🔄 Nuevo REFRESH:", data.refresh_token);
 
-        return USER_ACCESS_TOKEN;
+        return data.access_token;
     } catch (err) {
         console.error("REFRESH ERROR:", err.response?.data || err.message);
         throw new Error("Error renovando token");
@@ -107,12 +115,11 @@ app.get('/callback', async (req, res) => {
 
 
         const data = tokenRes.data.access_token !== undefined ? tokenRes.data : tokenRes.data?.data;
+        await redis.set("tiktok_access_token", data.access_token);
+        await redis.set("tiktok_refresh_token", data.refresh_token);
 
-        USER_ACCESS_TOKEN = data?.access_token;
-        REFRESH_TOKEN = data?.refresh_token;
-
-        console.log("🔑 Nuevo ACCESS TOKEN:", USER_ACCESS_TOKEN);
-        console.log("♻ Nuevo REFRESH TOKEN:", REFRESH_TOKEN);
+        console.log("🔑 Nuevo ACCESS TOKEN:",);
+        console.log("♻ Nuevo REFRESH TOKEN:",);
 
 
 
@@ -170,20 +177,23 @@ const getUserStatsForTiktok = async (res, USER_ACCESS_TOKENS) => {
    3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
 app.get('/tiktok/user-stats', async (_, res) => {
-    if (!USER_ACCESS_TOKEN) {
+    let token = await redis.get("tiktok_access_token");
+
+    if (!token) {
 
         return res.status(401).send("Error: Usuario no logueado. Ve a /login/tiktok");
     }
 
     try {
 
-        return await getUserStatsForTiktok(res, USER_ACCESS_TOKEN);
+        return await getUserStatsForTiktok(res, token);
 
     } catch (err) {
 
         if (err.response?.status === 401) {
-            await refreshToken();
-            return await getUserStatsForTiktok(res, USER_ACCESS_TOKEN);
+            const newToken = await refreshToken();
+
+            return await getUserStatsForTiktok(res, newToken);
 
         } else {
             console.error("STATS ERROR:", {
