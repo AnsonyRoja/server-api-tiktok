@@ -77,11 +77,13 @@ app.get('/login/tiktok', (_, res) => {
 app.get('/callback', async (req, res) => {
     const parsed = url.parse(req.originalUrl, true);
     const code = parsed.query.code;
+
     console.log("CODE:", code);
 
     if (!code) return res.status(400).send("No se recibió el code.");
 
     try {
+
         const body = qs.stringify({
             client_key: CLIENT_KEY,
             client_secret: CLIENT_SECRET,
@@ -89,6 +91,8 @@ app.get('/callback', async (req, res) => {
             grant_type: "authorization_code",
             redirect_uri: REDIRECT_URI
         });
+
+        console.log("cuerpo".body);
 
         const tokenRes = await axios.post(
             "https://open.tiktokapis.com/v2/oauth/token/",
@@ -105,20 +109,6 @@ app.get('/callback', async (req, res) => {
         console.log("♻ Nuevo REFRESH TOKEN:", REFRESH_TOKEN);
 
 
-
-        res.cookie("access_token", USER_ACCESS_TOKEN, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
-        });
-
-        res.cookie("refresh_token", REFRESH_TOKEN, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 60 // 60 días
-        });
 
 
         res.send("Login correcto ✔ Ya puedes usar /tiktok/user-stats");
