@@ -6,6 +6,7 @@ const cors = require('cors');
 const qs = require('qs');
 
 const app = express();
+const url = require('url');
 
 const CLIENT_KEY = "sbaw6m14w32eixys4d";
 const CLIENT_SECRET = "mwa309Y8ClEpjtP30OEr7axGR20Y4Heg";
@@ -74,9 +75,9 @@ app.get('/login/tiktok', (_, res) => {
    2) CALLBACK: CODE → ACCESS TOKEN
 ----------------------------------------------------- */
 app.get('/callback', async (req, res) => {
-    const { code } = req.query;
-
-    console.log('Codigo', code);
+    const parsed = url.parse(req.originalUrl, true);
+    const code = parsed.query.code;
+    console.log("CODE:", code);
 
     if (!code) return res.status(400).send("No se recibió el code.");
 
