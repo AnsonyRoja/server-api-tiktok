@@ -80,6 +80,9 @@ app.get('/callback', async (req, res) => {
 
     console.log("CODE:", code);
 
+    const decodedCode = decodeURIComponent(code);
+
+
     if (!code) return res.status(400).send("No se recibió el code.");
 
     try {
@@ -87,7 +90,7 @@ app.get('/callback', async (req, res) => {
         const body = qs.stringify({
             client_key: CLIENT_KEY,
             client_secret: CLIENT_SECRET,
-            code,
+            code: decodedCode,
             grant_type: "authorization_code",
             redirect_uri: REDIRECT_URI
         });
@@ -99,6 +102,9 @@ app.get('/callback', async (req, res) => {
             body,
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+
+        console.log("Respuesta completa de TikTok:", tokenRes.data);
+
 
         const data = tokenRes.data?.data;
 
