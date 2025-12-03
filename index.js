@@ -9,16 +9,16 @@ const qs = require('qs');
 const app = express();
 const url = require('url');
 const { getRedis } = require('./_lib/getRedis');
-const CLIENT_KEY = "sbaw6m14w32eixys4d";
-const CLIENT_SECRET = "mwa309Y8ClEpjtP30OEr7axGR20Y4Heg";
-const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
+const CLIENT_KEY = process.env.CLIENT_KEY;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
 
 app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
 
 
-
+// Renovación y actualización de tokens
 async function refreshToken() {
     const redis = await getRedis()
     const REFRESH_TOKEN = await redis.get("tiktok_refresh_token");
@@ -53,9 +53,9 @@ async function refreshToken() {
         throw new Error("Error renovando token");
     }
 }
-/* -----------------------------------------------------
-   1) LOGIN CON TIKTOK
------------------------------------------------------ */
+
+// 1) LOGIN CON TIKTOK
+
 app.get('/login/tiktok', (_, res) => {
     const state = Math.random().toString(36).slice(2);
 
@@ -73,9 +73,9 @@ app.get('/login/tiktok', (_, res) => {
     res.redirect(authUrl);
 });
 
-/* -----------------------------------------------------
-   2) CALLBACK: CODE → ACCESS TOKEN
------------------------------------------------------ */
+
+// 2) CALLBACK: CODE → ACCESS TOKEN
+
 app.get('/callback', async (req, res) => {
     const parsed = url.parse(req.originalUrl, true);
     const code = parsed.query.code;
@@ -127,7 +127,7 @@ app.get('/callback', async (req, res) => {
     }
 });
 
-
+// Traer la informacion del usuario logeado de tiktok
 const getUserStatsForTiktok = async (res, USER_ACCESS_TOKENS) => {
 
 
@@ -169,9 +169,9 @@ const getUserStatsForTiktok = async (res, USER_ACCESS_TOKENS) => {
     });
 }
 
-/* -----------------------------------------------------
-   3) OBTENER FOLLOWER COUNT, LIKES, ETC.
------------------------------------------------------ */
+
+//  3) OBTENER FOLLOWER COUNT, LIKES, ETC.
+
 app.get('/tiktok/user-stats', async (_, res) => {
     const redis = await getRedis()
 
