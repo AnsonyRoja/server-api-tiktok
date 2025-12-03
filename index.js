@@ -1,4 +1,4 @@
-// server.js
+// index.js
 const express = require('express');
 const axios = require('axios');
 const cookieParser = require('cookie-parser');
@@ -8,26 +8,19 @@ const qs = require('qs');
 
 const app = express();
 const url = require('url');
-const { createClient } = require("redis");
-
+const { getRedis } = require('./_lib/getRedis');
 const CLIENT_KEY = "sbaw6m14w32eixys4d";
 const CLIENT_SECRET = "mwa309Y8ClEpjtP30OEr7axGR20Y4Heg";
 const REDIRECT_URI = "https://server-api-tiktok.vercel.app/callback";
-const REDIS_URL = "redis://default:VxDWjGkqGePIu9v6SmSCJu9XjmJ46sXw@redis-19575.c62.us-east-1-4.ec2.cloud.redislabs.com:19575"
 
 app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
-const redis = createClient({
-    url: REDIS_URL
-});
-
-redis.on("error", (err) => console.error("Redis Error:", err));
-redis.connect();
 
 
 
 async function refreshToken() {
+    const redis = await getRedis()
     const REFRESH_TOKEN = await redis.get("tiktok_refresh_token");
 
     if (!REFRESH_TOKEN) throw new Error("No hay refresh token disponible");
@@ -86,6 +79,8 @@ app.get('/login/tiktok', (_, res) => {
 app.get('/callback', async (req, res) => {
     const parsed = url.parse(req.originalUrl, true);
     const code = parsed.query.code;
+    const redis = await getRedis()
+
 
     console.log("CODE:", code);
 
@@ -178,6 +173,8 @@ const getUserStatsForTiktok = async (res, USER_ACCESS_TOKENS) => {
    3) OBTENER FOLLOWER COUNT, LIKES, ETC.
 ----------------------------------------------------- */
 app.get('/tiktok/user-stats', async (_, res) => {
+    const redis = await getRedis()
+
     let token = await redis.get("tiktok_access_token");
 
     if (!token) {
