@@ -106,7 +106,7 @@ app.get('/callback', async (req, res) => {
         console.log("Respuesta completa de TikTok:", tokenRes.data);
 
 
-        const data = tokenRes.data?.data;
+        const data = tokenRes.data.access_token !== undefined ? tokenRes.data : tokenRes.data?.data;
 
         USER_ACCESS_TOKEN = data?.access_token;
         REFRESH_TOKEN = data?.refresh_token;
