@@ -38,8 +38,8 @@ async function refreshToken() {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        const data = tokenRes.data.access_token !== undefined ? tokenRes.data : tokenRes.data?.data;
-
+        console.log("valor de tokenRes", tokenRes.data);
+        const data = tokenRes.data;
         console.log(data);
 
         await redis.set("tiktok_access_token", data.access_token);
