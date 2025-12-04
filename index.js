@@ -32,6 +32,8 @@ async function refreshToken() {
             refresh_token: REFRESH_TOKEN
         });
 
+        console.log("cuerpo", body);
+
         const tokenRes = await axios.post(
             "https://open.tiktokapis.com/v2/oauth/refresh_token/",
             body,
