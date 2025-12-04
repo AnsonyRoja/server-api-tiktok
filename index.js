@@ -63,7 +63,8 @@ async function refreshToken() {
 
 app.get('/login/tiktok', (_, res) => {
     const state = Math.random().toString(36).slice(2);
-    res.cookie('csrfState', state, { maxAge: 60000 });
+
+    console.log(CLIENT_KEY, REDIRECT_URI);
 
     const scope = "user.info.stats,user.info.profile,user.info.basic";
 
