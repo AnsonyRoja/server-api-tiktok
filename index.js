@@ -40,6 +40,8 @@ async function refreshToken() {
 
         const data = tokenRes.data.access_token !== undefined ? tokenRes.data : tokenRes.data?.data;
 
+        console.log(data);
+
         await redis.set("tiktok_access_token", data.access_token);
         await redis.set("tiktok_refresh_token", data.refresh_token);
 
