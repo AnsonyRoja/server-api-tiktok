@@ -21,14 +21,19 @@ app.use(express.json());
 
 // Renovación y actualización de tokens
 async function refreshToken() {
-    const redis = await getRedis()
+
+
+
+    const redis = await getRedis();
     const REFRESH_TOKEN = await redis.get("tiktok_refresh_token");
 
     if (!REFRESH_TOKEN) throw new Error("No hay refresh token disponible");
 
     try {
+
         const body = qs.stringify({
             client_key: CLIENT_KEY,
+            client_secret: CLIENT_SECRET,
             grant_type: "refresh_token",
             refresh_token: REFRESH_TOKEN
         });
@@ -36,14 +41,18 @@ async function refreshToken() {
         console.log("cuerpo", body);
 
         const tokenRes = await axios.post(
-            "https://open.tiktokapis.com/v2/oauth/refresh_token/",
+            "https://open.tiktokapis.com/v2/oauth/token/", // Endpoint de renovación según la documentación
             body,
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        console.log("valor de tokenRes", tokenRes.data);
         const data = tokenRes.data;
-        console.log(data);
+        console.log("valor de tokenRes", data);
+
+        if (data.error || !data.access_token) {
+            console.error("REFRESH ERROR (API Response):", data.error_description || "Error desconocido");
+            throw new Error(`Error de la API de TikTok: ${data.error_description || "No se recibió access_token"}`);
+        }
 
         await redis.set("tiktok_access_token", data.access_token);
         await redis.set("tiktok_refresh_token", data.refresh_token);
@@ -54,11 +63,13 @@ async function refreshToken() {
 
         return data.access_token;
     } catch (err) {
-        console.error("REFRESH ERROR:", err.response?.data || err.message);
-        throw new Error("Error renovando token");
-    }
-}
+        // Capturar errores de red o errores de Axios
+        const errorDetails = err.response?.data?.error_description || err.message;
+        console.error("REFRESH ERROR (Catch):", errorDetails);
 
+        throw new Error("Fallo crítico renovando token.");
+    }
+};
 // 1) LOGIN CON TIKTOK
 
 app.get('/login/tiktok', (_, res) => {
